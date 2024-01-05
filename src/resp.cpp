@@ -1,6 +1,7 @@
 #include <string>
 #include <list>
 #include <optional>
+#include <iostream>
 
 #include "../include/resp.h"
 
@@ -9,8 +10,8 @@
 -- class Resp
 */
 
-Serialize Resp::SRLZ{};
-Deserialize Resp::DSRLZ{};
+Serialize Resp::m_SRLZ{};
+Deserialize Resp::m_DSRLZ{};
 /*
 *************************************
 * Resp::serialize(DataType firstCh,std::string)
@@ -20,9 +21,9 @@ std::optional<std::string> Resp::serialize(Resp::DataType firstCh,std::string st
 {
     switch (firstCh) {
     case Resp::SIMPLE_STR:
-        return SRLZ.simple_str(str);
+        return m_SRLZ.simple_str(str);
     case Resp::ERR:
-		return SRLZ.err(str);
+		return m_SRLZ.err(str);
     default:
         break;
     };
@@ -37,7 +38,7 @@ std::optional<std::string> Resp::serialize(Resp::DataType firstCh,int,std::strin
 {
     switch (firstCh) {
     case Resp::BULK_STR:
-        return SRLZ.bulk_str(str);
+        return m_SRLZ.bulk_str(str);
     default:
         break;
     };
@@ -53,7 +54,7 @@ std::optional<std::string> Resp::serialize(DataType firstCh,std::list<std::strin
 {
     switch (firstCh) {
     case Resp::ARR:
-		return SRLZ.array(lstr);
+		return m_SRLZ.array(lstr);
 	default:
 		break;
 	}	
@@ -65,7 +66,7 @@ std::optional<std::string> Resp::serialize(DataType firstCh,std::list<std::strin
 * Resp::serialize(DataType firstCh,std::list<std::pair<std::string>>);
 **************************************
 */
-std::optional<std::string> Resp::serialize(DataType firstCh,std::list<std::pair<std::string,std::string>> lpstr)
+std::optional<std::string> Resp::serialize(DataType /*firstCh*/,std::list<std::pair<std::string,std::string>> /*lpstr*/)
 {
     return std::nullopt;
 }
@@ -79,22 +80,22 @@ bool Resp::deserialize(std::string& str)
 {
     switch (str[0]) {
         case Resp::SIMPLE_STR:
-            DSRLZ.simple_str(str);
+            m_DSRLZ.simple_str(str);
             break;
         case Resp::ERR:
-            DSRLZ.err(str);
+            m_DSRLZ.err(str);
             break;
         case Resp::INT:
-            DSRLZ.integer(str);
+            m_DSRLZ.integer(str);
             break;
         case Resp::BULK_STR:
-            DSRLZ.bulk_str(str);
+            m_DSRLZ.bulk_str(str);
             break;
         case Resp::ARR:
-            DSRLZ.array(str);
+            m_DSRLZ.array(str);
             break;
         case Resp::SET:
-            DSRLZ.set(str);
+            m_DSRLZ.set(str);
             break;
         default:
             return false;
@@ -154,6 +155,10 @@ std::string Serialize::array(std::list<std::string>& lstr)
 */
 bool Deserialize::simple_str(std::string& str)
 {
+	if (str[0] != Resp::SIMPLE_STR) 
+		return false;
+	m_dsrlzed = std::string(&str[1]);
+	std::cout << std::get<std::string>(m_dsrlzed) << std::endl;
     return false;
 }
 
@@ -164,6 +169,10 @@ bool Deserialize::simple_str(std::string& str)
 */
 bool Deserialize::err(std::string& str)
 {
+	if (str[0] != Resp::ERR) 
+		return false;
+	m_dsrlzed = std::string(&str[1]);
+	std::cout << std::get<std::string>(m_dsrlzed) << std::endl;
     return false;
 }
 /*
@@ -171,7 +180,7 @@ bool Deserialize::err(std::string& str)
 * Deserialize::integer(std::string& str)
 **************************************
 */
-bool Deserialize::integer(std::string& str)
+bool Deserialize::integer(std::string& )
 {
     return false;
 }
@@ -180,7 +189,7 @@ bool Deserialize::integer(std::string& str)
 * Deserialize::bulk_str(std::string& str)
 **************************************
 */
-bool Deserialize::bulk_str(std::string& str)
+bool Deserialize::bulk_str(std::string& )
 {
     return false;
 }
@@ -189,7 +198,7 @@ bool Deserialize::bulk_str(std::string& str)
 * Deserialize::array(std::string& str)
 **************************************
 */
-bool Deserialize::array(std::string& str)
+bool Deserialize::array(std::string& )
 {
     return false;
 }
@@ -199,7 +208,7 @@ bool Deserialize::array(std::string& str)
 * Deserialize::set(std::string& str)
 **************************************
 */
-bool Deserialize::set(std::string& str)
+bool Deserialize::set(std::string& )
 {
     return false;
 }
