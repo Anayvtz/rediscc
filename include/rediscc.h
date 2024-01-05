@@ -1,2 +1,3 @@
 
+#define REDIS_SRVR_PORT 6379
 

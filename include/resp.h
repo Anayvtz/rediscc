@@ -2,6 +2,7 @@
 #include <string>
 #include <list>
 #include <optional>
+#include <variant>
 
 
 class Serialize;
@@ -38,16 +39,24 @@ class Deserialize
 {
 public:
 
-      Deserialize() {}
+	Deserialize() {}
 
-      bool simple_str(std::string& str);
-      bool err(std::string& str);
-      bool integer(std::string& str);
-      bool bulk_str(std::string& str);
-      bool array(std::string& str);
-      bool set(std::string& str);
+	bool simple_str(std::string& str);
+	bool err(std::string& str);
+	bool integer(std::string& str);
+	bool bulk_str(std::string& str);
+	bool array(std::string& str);
+	bool set(std::string& str);
 
 protected:
+
+	typedef std::variant<std::string
+						,std::list<std::string>
+						,std::list<std::pair<std::string,std::string>>> 
+	Dsrlzd_t;
+
+	Dsrlzd_t	m_dsrlzed;
+
 private:
 };
 
@@ -59,9 +68,6 @@ private:
 class Resp 
 {
 public:
-
-//	friend class Serialize;
-//	friend class Deserialize;
 
     enum DataType : char {SIMPLE_STR='+',ERR='-',INT=':',BULK_STR='$',ARR='*',SET='~'};
 
@@ -81,8 +87,8 @@ public:
 protected:
 private:
 
-    static Serialize SRLZ;
-    static Deserialize DSRLZ;
+    static Serialize m_SRLZ;
+    static Deserialize m_DSRLZ;
 
 
 
