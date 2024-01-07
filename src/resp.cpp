@@ -12,6 +12,10 @@
 
 Serialize Resp::m_SRLZ{};
 Deserialize Resp::m_DSRLZ{};
+
+const std::string Resp::NULL_BULK {"$-1\\r\\n"};
+const std::string Resp::NULL_ARR {"*-1\\r\\n"};
+const std::string Resp::DELIM {"\r\n"};
 /*
 *************************************
 * Resp::serialize(DataType firstCh,std::string)
@@ -24,11 +28,29 @@ std::optional<std::string> Resp::serialize(Resp::DataType firstCh,std::string st
         return m_SRLZ.simple_str(str);
     case Resp::ERR:
 		return m_SRLZ.err(str);
+	case BULK_STR:
+		return m_SRLZ.bulk_str(str);
     default:
         break;
     };
     return std::nullopt;
 }
+/*
+*************************************
+* Resp::serialize(DataType firstCh,int)
+**************************************
+*/
+std::optional<std::string> Resp::serialize(Resp::DataType firstCh,int num)
+{
+    switch (firstCh) {
+    case Resp::INT:
+        return m_SRLZ.integer(num);
+	default:
+		break;
+	}
+    return std::nullopt;
+}
+		
 /*
 *************************************
 * Resp::serialize(DataType firstCh,int,std::string);
@@ -76,31 +98,49 @@ std::optional<std::string> Resp::serialize(DataType /*firstCh*/,std::list<std::p
 * Resp::deserialize(std::string& str) 
 **************************************
 */
-bool Resp::deserialize(std::string& str) 
+std::optional<std::string> Resp::deserialize_bulk(std::string str)
+{
+	if (str[0]!=Resp::BULK_STR) return std::nullopt;
+	m_DSRLZ.bulk_str(str);
+	return m_DSRLZ.get_dsrlzed_str();
+}
+std::optional<std::list<std::string>> Resp::deserialize_arr(std::string str)
+{
+	if (str[0]!=Resp::ARR) return std::nullopt;
+	return m_DSRLZ.array(str);
+	//return m_DSRLZ.get_dsrlzed_list();
+}
+std::optional<Deserialize::DsrlzdVariant_t> Resp::deserialize(std::string str)
 {
     switch (str[0]) {
         case Resp::SIMPLE_STR:
             m_DSRLZ.simple_str(str);
+			return m_DSRLZ.get_dsrlzed_str();
             break;
         case Resp::ERR:
             m_DSRLZ.err(str);
+			return m_DSRLZ.get_dsrlzed_str();
             break;
         case Resp::INT:
             m_DSRLZ.integer(str);
+			return m_DSRLZ.get_dsrlzed_int();
             break;
         case Resp::BULK_STR:
             m_DSRLZ.bulk_str(str);
+			return m_DSRLZ.get_dsrlzed_str();
             break;
         case Resp::ARR:
-            m_DSRLZ.array(str);
+            return m_DSRLZ.array(str);
+			//return m_DSRLZ.get_dsrlzed_list();
             break;
         case Resp::SET:
             m_DSRLZ.set(str);
+			return m_DSRLZ.get_dsrlzed_list();
             break;
         default:
-            return false;
+			break;
    }
-   return true;
+   return std::nullopt;
 }
 
 /*
@@ -112,6 +152,13 @@ std::string Serialize::simple_str(std::string& str)
     simple += str;
     simple += Resp::DELIM; 
     return simple;
+}
+std::string Serialize::integer(int num)
+{
+	std::string intstr {Resp::INT};
+    intstr += std::to_string(num);
+    intstr += Resp::DELIM; 
+    return intstr;
 }
 std::string Serialize::err(std::string& str) 
 {
@@ -153,13 +200,14 @@ std::string Serialize::array(std::list<std::string>& lstr)
 * Deserialize::simple_str(std::string& str)
 **************************************
 */
-bool Deserialize::simple_str(std::string& str)
+bool Deserialize::simple_str(std::string str)
 {
 	if (str[0] != Resp::SIMPLE_STR) 
 		return false;
-	m_dsrlzed = std::string(&str[1]);
-	std::cout << std::get<std::string>(m_dsrlzed) << std::endl;
-    return false;
+	std::string::size_type delimpos=str.find_first_of(Resp::DELIM);
+	m_dsrlzed = str.substr(1,delimpos-1);
+	std::cout << "INFO: Deserialize::simple_str " << std::get<std::string>(m_dsrlzed) << std::endl;
+    return true;
 }
 
 /*
@@ -167,40 +215,79 @@ bool Deserialize::simple_str(std::string& str)
 * Deserialize::err(std::string& str)
 **************************************
 */
-bool Deserialize::err(std::string& str)
+bool Deserialize::err(std::string str)
 {
 	if (str[0] != Resp::ERR) 
 		return false;
-	m_dsrlzed = std::string(&str[1]);
+	std::string::size_type delimpos=str.find_first_of(Resp::DELIM);
+	m_dsrlzed = str.substr(1,delimpos-1);
 	std::cout << std::get<std::string>(m_dsrlzed) << std::endl;
-    return false;
+    return true;
 }
 /*
 *************************************
 * Deserialize::integer(std::string& str)
 **************************************
 */
-bool Deserialize::integer(std::string& )
+bool Deserialize::integer(std::string str)
 {
-    return false;
+	if (str[0]!=Resp::INT)
+    	return false;
+		
+	std::string::size_type delimpos=str.find_first_of(Resp::DELIM);
+	std::string integer = str.substr(1,delimpos-1);
+	m_dsrlzed = std::stoi(integer);
+	return true;
 }
+	
 /*
 *************************************
 * Deserialize::bulk_str(std::string& str)
 **************************************
 */
-bool Deserialize::bulk_str(std::string& )
+bool Deserialize::bulk_str(std::string str)
 {
-    return false;
+	if (str[0]!=Resp::BULK_STR)
+		return false;
+	std::string::size_type delimpos=str.find_first_of(Resp::DELIM);
+	std::string len = str.substr(1,delimpos-1);
+//	std::string::size_type delimpos1=str.find_first_of(Resp::DELIM,delimpos+Resp::DELIM.length());
+	std::string cmd = str.substr(delimpos+Resp::DELIM.length(),std::stoi(len));
+	m_dsrlzed = cmd;
+    return true;
 }
 /*
 *************************************
 * Deserialize::array(std::string& str)
 **************************************
 */
-bool Deserialize::array(std::string& )
+std::optional<std::list<std::string>> Deserialize::array(std::string str)
 {
-    return false;
+	if (str[0]!=Resp::ARR)
+		return std::nullopt;
+	std::string::size_type delimpos=str.find(Resp::DELIM);
+	if (delimpos > str.length()) {
+		std::cout << "ERR: Deserialize::array. str:" << str << "delimpos:" << delimpos << std::endl;
+		return std::nullopt;
+	}
+	std::cout << "INFO: Deserialize::array. str:" << str << "delimpos:" << delimpos << std::endl;
+	std::string arrsz = str.substr(1,delimpos-1);
+	int iarrsz = std::stoi(arrsz);
+/*	if (iarrsz == 1) {
+		return bulk_str(&str[delimpos+Resp::DELIM.length()]);
+	}*/
+	std::list<std::string> arrlst{};
+	int pos=delimpos+Resp::DELIM.length();
+	for (int i=0; i<iarrsz ; ++i) {
+		if (!bulk_str(&str[pos])) return std::nullopt;
+		std::string currbulk{std::get<std::string>(m_dsrlzed)};
+		int currbulklen = currbulk.length();
+		std::string lenstr = std::to_string(currbulklen);
+		pos += currbulk.length()+Resp::DELIM.length() + 1 + lenstr.length()+Resp::DELIM.length();  
+	 	arrlst.push_back(currbulk);	
+	}
+	m_dsrlzed = arrlst;
+    return arrlst;
 }
 
 /*
@@ -208,7 +295,7 @@ bool Deserialize::array(std::string& )
 * Deserialize::set(std::string& str)
 **************************************
 */
-bool Deserialize::set(std::string& )
+bool Deserialize::set(std::string )
 {
     return false;
 }
