@@ -10,6 +10,10 @@
 #include <iostream>
 
 #include "../../include/clnt.h"
+#include "../../include/resp.h"
+#include "../../include/commands.h"
+
+CmdMgr RedisClnt::m_CMD_MGR;
 
 bool Clnt::activate()
 {
@@ -49,3 +53,27 @@ bool RedisClnt::connect_to_server()
 	return true;
 }
 
+bool RedisClnt::activate_and_process_ping()
+{
+	std::optional<std::string> pingreq=m_CMD_MGR.build_ping_request();
+	int flags{};
+	errno = 0;
+    int ret_snd=send(m_connFd
+                     ,(*pingreq).c_str()
+                     ,(*pingreq).length()
+                     ,flags);
+	if (ret_snd != static_cast<int>((*pingreq).length())) {
+		std::cout << "ERR: not send all buff:" << (*pingreq) << std::endl;
+	}
+
+    int BUFF_SZ {4096};
+	char buf[BUFF_SZ];
+    int ret_data = recv(m_connFd,buf,BUFF_SZ,flags);
+	if (ret_data <= 0) return false;
+	std::optional<std::string> pong=m_CMD_MGR.process_pong_response(buf,BUFF_SZ);
+	if (!pong) return false;
+	std::cout << *pong << std::endl;
+	return true;
+	
+
+}
