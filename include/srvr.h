@@ -1,4 +1,7 @@
 
+#ifndef _SRVR_H
+#define _SRVR_H
+
 #include <iostream>
 #include <string>
 #include <unistd.h>
@@ -24,7 +27,7 @@ protected:
 	virtual bool make_socket_passive_listen() = 0 ;
 	virtual bool acceptor();
 	void conn_mgr(int connfd,CmdMgr& cmdMgr);
-	void recv_and_respond(int connfd,CmdMgr& cmdMgr);
+	bool recv_and_respond(int connfd,CmdMgr& cmdMgr);
 
 	int m_listenFd;
 	int m_backlog;
@@ -64,3 +67,4 @@ protected:
 
 private:
 };
+#endif

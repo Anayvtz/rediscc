@@ -1,3 +1,5 @@
+#ifndef _RESP_H
+#define _RESP_H
 
 #include <string>
 #include <list>
@@ -22,6 +24,7 @@ public:
 
     std::string simple_str(std::string& str);
     std::string err(std::string& str);
+    std::string integer(int num);
     std::string bulk_str(std::string& str);
     std::string array(std::list<std::string>& str);
 
@@ -39,23 +42,38 @@ class Deserialize
 {
 public:
 
+	typedef std::variant<std::string
+						,int
+						,std::list<std::string>
+						,std::list<std::pair<std::string,std::string>>> 
+	DsrlzdVariant_t;
+
 	Deserialize() {}
 
-	bool simple_str(std::string& str);
-	bool err(std::string& str);
-	bool integer(std::string& str);
-	bool bulk_str(std::string& str);
-	bool array(std::string& str);
-	bool set(std::string& str);
+	bool simple_str(std::string str);
+	bool err(std::string str);
+	bool integer(std::string str);
+	bool bulk_str(std::string str);
+	std::optional<std::list<std::string>> array(std::string str);
+	bool set(std::string str);
+
+	std::string get_dsrlzed_str() {
+		return std::get<std::string>(m_dsrlzed);
+	}
+	int get_dsrlzed_int() {
+		return std::get<int>(m_dsrlzed);
+	}
+	std::list<std::string> get_dsrlzed_list() {
+		return std::get<std::list<std::string>>(m_dsrlzed);
+	}
+	std::list<std::pair<std::string,std::string>> get_dsrlzed_pairlist() {
+		return std::get<std::list<std::pair<std::string,std::string>>>(m_dsrlzed);
+	}
 
 protected:
 
-	typedef std::variant<std::string
-						,std::list<std::string>
-						,std::list<std::pair<std::string,std::string>>> 
-	Dsrlzd_t;
 
-	Dsrlzd_t	m_dsrlzed;
+	DsrlzdVariant_t	m_dsrlzed;
 
 private:
 };
@@ -74,15 +92,18 @@ public:
 	Resp() {}
 
     static std::optional<std::string> serialize(DataType firstCh,std::string);
+    static std::optional<std::string> serialize(DataType firstCh,int);
     static std::optional<std::string> serialize(DataType firstCh,int,std::string);
     static std::optional<std::string> serialize(DataType firstCh,std::list<std::string>);
     static std::optional<std::string> serialize(DataType firstCh,std::list<std::pair<std::string,std::string>>);
 
-    static bool deserialize(std::string& str);
+    static std::optional<Deserialize::DsrlzdVariant_t> deserialize(std::string str);
+    static std::optional<std::string> deserialize_bulk(std::string str);
+    static std::optional<std::list<std::string>> deserialize_arr(std::string str);
 
-	static constexpr const char* NULL_BULK {"$-1\\r\\n"};
-	static constexpr const char* NULL_ARR {"*-1\\r\\n"};
-    static constexpr const char* DELIM {"\\r\\n"};
+	static const std::string NULL_BULK; 
+	static const std::string NULL_ARR;
+    static const std::string DELIM;
 
 protected:
 private:
@@ -93,3 +114,4 @@ private:
 
 
 };
+#endif

@@ -1,6 +1,10 @@
 
+#ifndef _CLNT_H
+#define _CLNT_H
+
 #include <unistd.h>
 #include "rediscc.h"
+#include "commands.h"
 
 /*
 --
@@ -40,9 +44,15 @@ public:
 
 	enum Ports : int { REDIS_PORT=REDIS_SRVR_PORT };
 
+	bool activate_and_process_ping();
+
 protected:
 
 	virtual bool connect_to_server();
 
+	static CmdMgr m_CMD_MGR;
+
 private:
 };
+
+#endif
