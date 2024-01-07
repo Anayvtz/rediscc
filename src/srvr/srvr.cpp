@@ -44,12 +44,16 @@ bool Srvr::acceptor()
 	fd_set	read_fdset;
 	int maxfd = m_listenFd;
 	
-	FD_ZERO(&read_fdset);
-	FD_SET(m_listenFd,&read_fdset);
-
 	for ( ; ; ) {
 		
+		FD_ZERO(&read_fdset);
+		FD_SET(m_listenFd,&read_fdset);
+
 		int nready = select(maxfd+1,&read_fdset,NULL,NULL,NULL);
+		if (nready ==-1) {
+			std::cout << "ERR: select ready sockets number is: "<<nready<<std::endl;
+			continue;	
+		}
 		if (nready > 0) {
 			std::cout << "INFO: select ready sockets number is: "<<nready<<std::endl;
 		}
@@ -61,7 +65,7 @@ bool Srvr::acceptor()
 								,reinterpret_cast<sockaddr*>(&clntaddr)
 								,&clntlen);
 			if (connfd != -1) {
-				fcntl(connfd,F_SETFL,O_NONBLOCK);
+				//fcntl(connfd,F_SETFL,O_NONBLOCK);
 			} else {
 				if (errno==EAGAIN || errno==EWOULDBLOCK)
 					break;
@@ -70,9 +74,6 @@ bool Srvr::acceptor()
 					return false;
 				}
 			}
-
-			FD_SET(connfd,&read_fdset);
-			if (connfd > maxfd) maxfd=connfd;
 
 			std::thread*  pconnmgr=new std::thread(&Srvr::conn_mgr,this
 													,connfd
@@ -88,22 +89,32 @@ bool Srvr::acceptor()
 	return false;
 }
 
-void Srvr::recv_and_respond(int connfd,CmdMgr& cmdMgr)
+
+bool Srvr::recv_and_respond(int connfd,CmdMgr& cmdMgr)
 {
 	int flags{};
 	int BUFF_SZ {4096};
+	int cycles{};
+
+	std::cout << "INFO: recv_and_respond threadid:" << std::this_thread::get_id() << " connfd:" << connfd << std::endl;
 
 	while (true) {
 
 		char buf[BUFF_SZ];
 		int ret_data = recv(connfd,buf,BUFF_SZ,flags);
 
-		if (ret_data > 0) {
+		if (ret_data == 0 && !cycles) 
+			return false;
 
-			std::optional<std::string> rspns=cmdMgr.process_response(buf
+		if (ret_data == 0 && cycles) 
+			return true;
+
+
+		++cycles;
+		std::optional<std::string> rspns=cmdMgr.process_and_respond(buf
 																	,BUFF_SZ);
 
-			if (rspns) {
+		if (rspns) {
 
 				errno = 0;
 				ssize_t ret_snd=send(connfd
@@ -114,48 +125,59 @@ void Srvr::recv_and_respond(int connfd,CmdMgr& cmdMgr)
 					std::cout << "ERR: msg was not sent completly msg is:" << *rspns << std::endl;
 					if (ret_snd == -1) {
 						std::cout << " ERR: errno of send:" << errno << std::endl;
-					}
+				}
+				else {
+					std::cout << "INFO: msg sent is:" << *rspns << std::endl;
 				}
 			}
-
 		}
-		else break;
+
 	}
+
+	return true;
 }
 
 void Srvr::conn_mgr(int connfd,CmdMgr& cmdMgr)
 {
-	recv_and_respond(connfd,cmdMgr);
+	//recv_and_respond(connfd,cmdMgr);
 
 	fd_set	rd_fdset;
 	fd_set	wrt_fdset;
 	fd_set	err_fdset;
 	int maxfd = connfd;
-	int nready{};
-	
-	FD_ZERO(&rd_fdset);
-	FD_SET(connfd,&rd_fdset);
-	FD_ZERO(&wrt_fdset);
-	FD_SET(connfd,&wrt_fdset);
-	FD_ZERO(&err_fdset);
-	FD_SET(connfd,&err_fdset);
-
+	int numready{};
 
 	for ( ; ; ) {
 
-		nready = select(maxfd+1,&rd_fdset,&wrt_fdset,&err_fdset,NULL);
-		if (nready > 0) {
-			std::cout << "INFO: select ready sockets number is: "<<nready<<std::endl;
+		FD_ZERO(&rd_fdset);
+		FD_SET(connfd,&rd_fdset);
+		FD_ZERO(&wrt_fdset);
+		FD_SET(connfd,&wrt_fdset);
+		FD_ZERO(&err_fdset);
+		FD_SET(connfd,&err_fdset);
+
+		numready = select(maxfd+1,&rd_fdset,&wrt_fdset,&err_fdset,NULL);
+		if (numready == -1) {
+			std::cout << "ERR: conn_mgr select ready sockets number is: "<<numready<<std::endl;
+			continue;
+		}
+		if (numready > 0) {
+			std::cout << "INFO: conn_mgr select ready sockets number is: "<<numready<<std::endl;
 		}
 
 		if (FD_ISSET(connfd, &rd_fdset)) {
-			recv_and_respond(connfd,cmdMgr);
+			if (!recv_and_respond(connfd,cmdMgr)) {
+				break;
+			}
 		}
 		if (FD_ISSET(connfd, &wrt_fdset)) {
 		}
 		if (FD_ISSET(connfd, &err_fdset)) {
 		}
 	}
+
+	close_socket(connfd);
+	std::cout << "INFO: close socket in thread. connfd:" << connfd << std::endl;
 }
 /*
 -- class TcpSrvr
@@ -186,7 +208,7 @@ bool TcpSrvr::make_socket_passive_listen()
 		close_socket(m_listenFd);
 		return false;
 	}
-	fcntl (m_listenFd,F_SETFL,O_NONBLOCK);
+	//fcntl (m_listenFd,F_SETFL,O_NONBLOCK);
 	return true;
 }
 
