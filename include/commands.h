@@ -9,30 +9,20 @@
 #include <vector>
 
 
+class RedisSrvr;
 
 class CmdMgr
 {
 public:
 
 
-	enum CmdType : int { PING=0, HELLO, ECHO, NOT_SUPPORTED};
+	enum CmdType : int { PING=0, HELLO, ECHO, SET, GET, SETEX, NOT_SUPPORTED};
 
-	std::optional<std::string> process_and_respond(char* buf,int sz);
+	std::optional<std::string> process_and_respond(char* buf,int sz,RedisSrvr&);
 
 	CmdType find_cmd(char* str,int sz);
 	CmdType find_cmd_bulk(char* str,int sz);
 	CmdType find_cmd_arr(char* str,int sz);
-
-	std::string build_err_response();
-	std::string build_pong_response();
-	std::string build_version_response();
-	std::optional<std::string> build_echo_response(char* str,int sz);
-	
-	std::optional<std::string> build_ping_request();
-	void build_hello_request();
-	void build_echo_request(std::string echostr);
-
-	std::optional<std::string> process_pong_response(char*,int);
 
 protected:
 
