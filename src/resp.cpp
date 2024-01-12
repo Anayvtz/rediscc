@@ -3,7 +3,7 @@
 #include <optional>
 #include <iostream>
 
-#include "../include/resp.h"
+#include "resp.h"
 
 
 /*
@@ -270,7 +270,7 @@ std::optional<std::list<std::string>> Deserialize::array(std::string str)
 		std::cout << "ERR: Deserialize::array. str:" << str << "delimpos:" << delimpos << std::endl;
 		return std::nullopt;
 	}
-	std::cout << "INFO: Deserialize::array. str:" << str << "delimpos:" << delimpos << std::endl;
+//	std::cout << "INFO: Deserialize::array. str:" << str << "delimpos:" << delimpos << std::endl;
 	std::string arrsz = str.substr(1,delimpos-1);
 	int iarrsz = std::stoi(arrsz);
 /*	if (iarrsz == 1) {
