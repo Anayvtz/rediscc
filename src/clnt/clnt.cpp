@@ -9,11 +9,11 @@
 #include <errno.h>
 #include <iostream>
 
-#include "../../include/clnt.h"
-#include "../../include/resp.h"
-#include "../../include/commands.h"
+#include "clnt.h"
+#include "resp.h"
+#include "commands_clnt.h"
 
-CmdMgr RedisClnt::m_CMD_MGR;
+ClntCmdMgr RedisClnt::m_CMD_MGR;
 
 bool Clnt::activate()
 {
@@ -70,10 +70,55 @@ bool RedisClnt::activate_and_process_ping()
 	char buf[BUFF_SZ];
     int ret_data = recv(m_connFd,buf,BUFF_SZ,flags);
 	if (ret_data <= 0) return false;
-	std::optional<std::string> pong=m_CMD_MGR.process_pong_response(buf,BUFF_SZ);
+	std::optional<std::string> pong=m_CMD_MGR.process_response(buf,BUFF_SZ);
 	if (!pong) return false;
 	std::cout << *pong << std::endl;
 	return true;
 	
 
+}
+bool RedisClnt::activate_and_process_set(std::string key,std::string value)
+{
+	std::pair<std::string,std::string> kvpair{key,value};
+	std::optional<std::string> setreq=m_CMD_MGR.build_set_request(kvpair);
+	int flags{};
+	errno = 0;
+    int ret_snd=send(m_connFd
+                     ,(*setreq).c_str()
+                     ,(*setreq).length()
+                     ,flags);
+	if (ret_snd != static_cast<int>((*setreq).length())) {
+		std::cout << "ERR: not send all buff:" << (*setreq) << std::endl;
+	}
+
+    int BUFF_SZ {4096};
+	char buf[BUFF_SZ];
+    int ret_data = recv(m_connFd,buf,BUFF_SZ,flags);
+	if (ret_data <= 0) return false;
+	std::optional<std::string> ok=m_CMD_MGR.process_response(buf,BUFF_SZ);
+	if (!ok) return false;
+	std::cout << *ok << std::endl;
+	return true;
+}
+bool RedisClnt::activate_and_process_get(std::string key)
+{
+	std::optional<std::string> setreq=m_CMD_MGR.build_get_request(key);
+	int flags{};
+	errno = 0;
+    int ret_snd=send(m_connFd
+                     ,(*setreq).c_str()
+                     ,(*setreq).length()
+                     ,flags);
+	if (ret_snd != static_cast<int>((*setreq).length())) {
+		std::cout << "ERR: not send all buff:" << (*setreq) << std::endl;
+	}
+
+    int BUFF_SZ {4096};
+	char buf[BUFF_SZ];
+    int ret_data = recv(m_connFd,buf,BUFF_SZ,flags);
+	if (ret_data <= 0) return false;
+	std::optional<std::string> ok=m_CMD_MGR.process_response(buf,BUFF_SZ);
+	if (!ok) return false;
+	std::cout << *ok << std::endl;
+	return true;
 }
