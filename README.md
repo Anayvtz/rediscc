@@ -10,6 +10,8 @@ $make rediscc_srvr
 to compile only the client:
 $make rediscc_clnt
 
+you can also install Redis original and use /usr/bin/redis-cli with rediscc_srvr.
+
 client and server are supporting the following commands:
 
 PING - on which client recieves PONG
