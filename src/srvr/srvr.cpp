@@ -8,11 +8,13 @@
 #include <fcntl.h>
 #include <thread>
 #include <optional>
+#include <memory>
 
-#include "../../include/srvr.h"
+#include "srvr.h"
+#include "commands_srvr.h"
 
 
-CmdMgr	Srvr::m_CMD_MGR{};
+std::unique_ptr<SrvrCmdMgr>	Srvr::m_CMD_MGR{new SrvrCmdMgr{}};
 
 /*
 -- class Srvr
@@ -36,7 +38,7 @@ bool Srvr::activate()
 	return rc;
 }
 
-bool Srvr::acceptor()
+bool RedisSrvr::acceptor()
 {
 	struct sockaddr_in clntaddr;
 	socklen_t clntlen = sizeof(clntaddr);
@@ -75,9 +77,9 @@ bool Srvr::acceptor()
 				}
 			}
 
-			std::thread*  pconnmgr=new std::thread(&Srvr::conn_mgr,this
+			std::thread*  pconnmgr=new std::thread(&RedisSrvr::conn_mgr,this
 													,connfd
-													,std::ref(m_CMD_MGR));
+													,std::ref(*m_CMD_MGR));
 			m_conn_thrds.push_back(pconnmgr);
 		}
 	}
@@ -90,7 +92,7 @@ bool Srvr::acceptor()
 }
 
 
-bool Srvr::recv_and_respond(int connfd,CmdMgr& cmdMgr)
+bool RedisSrvr::recv_and_respond(int connfd,SrvrCmdMgr& cmdMgr)
 {
 	int flags{};
 	int BUFF_SZ {4096};
@@ -112,7 +114,8 @@ bool Srvr::recv_and_respond(int connfd,CmdMgr& cmdMgr)
 
 		++cycles;
 		std::optional<std::string> rspns=cmdMgr.process_and_respond(buf
-																	,BUFF_SZ);
+																	,BUFF_SZ
+																	,*this);
 
 		if (rspns) {
 
@@ -127,7 +130,7 @@ bool Srvr::recv_and_respond(int connfd,CmdMgr& cmdMgr)
 						std::cout << " ERR: errno of send:" << errno << std::endl;
 				}
 				else {
-					std::cout << "INFO: msg sent is:" << *rspns << std::endl;
+					//std::cout << "INFO: msg sent is:" << *rspns << std::endl;
 				}
 			}
 		}
@@ -137,9 +140,8 @@ bool Srvr::recv_and_respond(int connfd,CmdMgr& cmdMgr)
 	return true;
 }
 
-void Srvr::conn_mgr(int connfd,CmdMgr& cmdMgr)
+void RedisSrvr::conn_mgr(int connfd,SrvrCmdMgr& cmdMgr)
 {
-	//recv_and_respond(connfd,cmdMgr);
 
 	fd_set	rd_fdset;
 	fd_set	wrt_fdset;
@@ -178,6 +180,19 @@ void Srvr::conn_mgr(int connfd,CmdMgr& cmdMgr)
 
 	close_socket(connfd);
 	std::cout << "INFO: close socket in thread. connfd:" << connfd << std::endl;
+}
+
+bool RedisSrvr::insert2memdb(std::string key,std::string val)
+{
+	return m_memDB.insert(key,val);
+}
+bool RedisSrvr::insert2memdb(std::string key,std::string val,int seconds)
+{
+	return m_memDB.insert(key,val,seconds);
+}
+std::optional<MemDB::ValueVariant_t> RedisSrvr::retrieve_from_memdb(std::string key)
+{
+	return m_memDB.retrieve(key);
 }
 /*
 -- class TcpSrvr
