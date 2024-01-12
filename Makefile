@@ -1,18 +1,10 @@
 CXX=g++
 CXXFLAGS= -g3 -gdwarf
 #CXXFLAGS= -g3 -gdwarf -D__GLIBCXX_USE_CXX11_ABI=0
-CXXFLAGS+=-I./include/ -Wall -Wextra -Werror -std=c++20 -DDEBUG -g -O0
+CXXFLAGS+=-I./include/ -I./include/srvr/ -I./include/clnt/ -Wall -Wextra -Werror -std=c++20 -DDEBUG -g -O0
 LDFLAGS=-g
-DEPS=./include/rediscc.h ./include/resp.h ./include/srvr.h ./include/commands.h ./include/clnt.h
-SRVR_OBJS=./src/srvr/rediscc.o ./src/resp.o ./src/srvr/srvr.o ./src/commands.o
-CLNT_OBJS=./src/clnt/rediscccli.o ./src/resp.o ./src/commands.o ./src/clnt/clnt.o
-
-%.o: ./src/%.cpp $(DEPS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS)-c -o ./src/$@ $<
-./srvr/%.o: ./src/srvr/%.cpp $(DEPS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o ./src/srvr/$@ $<
-./clnt/%.o: ./src/clnt/%.cpp $(DEPS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o ./src/clnt/$@ $<
+SRVR_OBJS=./src/srvr/rediscc.o ./src/resp.o ./src/srvr/srvr.o ./src/commands.o ./src/srvr/commands_srvr.o ./src/srvr/memdb.o ./src/srvr/timer_wheel.o
+CLNT_OBJS=./src/clnt/rediscccli.o ./src/resp.o ./src/commands.o ./src/clnt/commands_clnt.o ./src/clnt/clnt.o
 
 rediscc_srvr: $(SRVR_OBJS)
 	$(CXX) $(CXXFLAGS) -o rediscc_srvr	$^	$(LDFLAGS)
