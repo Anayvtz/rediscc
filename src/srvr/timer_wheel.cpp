@@ -5,6 +5,7 @@
 
 #include "timer_wheel.h"
 #include "memdb.h"
+#include "logger.h"
 
 TmrWheel::TmrWheel(MemDB* pmemdb) : 	m_mtx{}
 						,m_tmr_wheel{}
@@ -31,15 +32,14 @@ bool TmrWheel::manage_timers()
 			m_cv.wait_for(lck
 					,currsecs
 					,[=,this]{return (m_tmr_wheel.front().first!=currsecs);});
-					// && !(expire>std::chrono::system_clock::now().time_since_epoch());});
 			now=std::chrono::system_clock::now().time_since_epoch();
-			std::cout << "INFO TmrWheel::manage_timers after wait_for. m_tmr_wheel.size:" << m_tmr_wheel.size() << " now is:" << now.count() << std::endl;
+			Logger::instance().log_info(" after wait_for. m_tmr_wheel.size:" ,std::to_string(m_tmr_wheel.size())," now is:",std::to_string(now.count()));
 			print_tmr_wheel();
 			if (m_tmr_wheel.front().first != currsecs) {
-				std::cout 	<< "INFO: updating tmr_wheel front. front:" 
-							<< m_tmr_wheel.front().first.count()
-							<< " update from currsecs: " 
-							<< currsecs.count() << std::endl;
+				Logger::instance().log_info(" updating tmr_wheel front. front:" 
+							,std::to_string(m_tmr_wheel.front().first.count())
+							," update from currsecs: " 
+							,std::to_string(currsecs.count()));
 				currsecs=m_tmr_wheel.front().first;
 				now=std::chrono::system_clock::now().time_since_epoch();
 				expire=now + currsecs;
@@ -52,36 +52,36 @@ bool TmrWheel::manage_timers()
 	
 		auto elem2rmv = m_tmr_wheel.front();
 		m_tmr_wheel.pop_front();
-		std::cout << "INFO: removed element with expired time:" 
-					<< elem2rmv.first.count() 
-					<< " with key:" << elem2rmv.second->first << std::endl;
+		Logger::instance().log_info(" removed element with expired time:" 
+					, std::to_string(elem2rmv.first.count())
+					," with key:",elem2rmv.second->first);
 		m_memDB->remove(elem2rmv.second->first);
 	}
 }
 void TmrWheel::print_tmr_wheel()
 {
 	for (auto item:m_tmr_wheel) {
-		std::cout << " expire:" << item.first.count() << " key:" << item.second->first << std::endl;
+		Logger::instance().log_info(" expire:",std::to_string(item.first.count())," key:",item.second->first);
 	}
 }
 bool TmrWheel::insert(int expiresec,MemDB::Hash_t::iterator expireobj)
 {
 	std::lock_guard<std::mutex>	wrtrLck(m_mtx);
 	std::pair<std::chrono::milliseconds,MemDB::Hash_t::iterator> newTimer{expiresec*1000,expireobj};
-	std::cout << "INFO: TmrWheel::insert RCV newTimer expire time is:" << newTimer.first.count() << std::endl;
+	Logger::instance().log_info("TmrWheel::insert RCV newTimer expire time is:",std::to_string(newTimer.first.count()));
 	if (newTimer.first.count() < 0) {
 		newTimer.first = std::chrono::milliseconds(INT_MAX);
 	}
 	if (m_tmr_wheel.empty()) {
 		m_tmr_wheel.push_front(newTimer);
-		std::cout << "INFO: TmrWheel::insert to empty wheel newTimer expire time is:" << newTimer.first.count() << std::endl;
+		Logger::instance().log_info(" insert to empty wheel newTimer expire time is:", std::to_string(newTimer.first.count()));
 		m_cv.notify_all();
 		return true;
 	}
 	if (m_tmr_wheel.front().first > newTimer.first) {
 		m_tmr_wheel.front().first -= newTimer.first;
 		m_tmr_wheel.push_front(newTimer);
-		std::cout << "INFO: TmrWheel::insert in front of wheel newTimer expire time is:" << newTimer.first.count() << std::endl;
+		Logger::instance().log_info(" insert in front of wheel newTimer expire time is:", std::to_string(newTimer.first.count()));
 		m_cv.notify_all();
 		return true;
 	}
@@ -94,9 +94,9 @@ bool TmrWheel::insert(int expiresec,MemDB::Hash_t::iterator expireobj)
 			itrprev=itrcurr;
 			continue;
 		}
-		std::cout << "INFO: TmrWheel::insert in middle of wheel newTimer expire time is:" << newTimer.first.count() << " after timer:" << itrprev->first.count() << std::endl;
+		Logger::instance().log_info(" insert in middle of wheel newTimer expire time is:", std::to_string(newTimer.first.count())," after timer:", std::to_string(itrprev->first.count()));
+		(*itrcurr).first -= newTimer.first;
 		m_tmr_wheel.insert(itrprev,newTimer);
-		m_cv.notify_all();
 		return true;
 	}
 

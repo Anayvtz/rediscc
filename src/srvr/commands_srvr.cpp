@@ -8,6 +8,7 @@
 #include "commands_srvr.h"
 #include "resp.h"
 #include "srvr.h"
+#include "logger.h"
 
 
 /*
@@ -72,9 +73,9 @@ std::optional<std::string> SrvrCmdMgr::build_echo_response(char* str,int sz)
 	std::string respstr=std::get<std::string>(*dsrlzd);
 	std::optional<std::string> echostr = Resp::serialize(Resp::SIMPLE_STR,respstr);
 	if (echostr)
-		std::cout << "INFO: echo str is:" << *echostr << std::endl;
+		Logger::instance().log_info(" echo str is:" ,*echostr);
 	else {
-		std::cout << "ERR: serialize echostr failed" << std::endl;
+		Logger::instance().log_error(" serialize echostr failed" );
 	}
 	return echostr;
 }
@@ -117,31 +118,32 @@ std::optional<std::string> SrvrCmdMgr::build_setex_response(char* str,int sz,Red
 std::optional<std::string> SrvrCmdMgr::build_get_response(char* str,int sz,RedisSrvr& rediss)
 {
 	std::optional<std::list<std::string>> lstreq=Resp::deserialize_arr(std::string{str,static_cast<std::string::size_type>(sz)});
-	if (!lstreq) { std::cout << "ERR: build_get_response  deserialize_arr failed for str:" << str << std::endl;
+	if (!lstreq) { 
+		Logger::instance().log_error(" build_get_response  deserialize_arr failed for str:", str );
 		return std::nullopt;
 	}
 	(*lstreq).pop_front();
 	std::string key=(*lstreq).front();
 	std::optional<MemDB::ValueVariant_t> val=rediss.retrieve_from_memdb(key);
 	if (!val) {
-		std::cout << "ERR: build_get_response  retrv from memDB failed for str:" << str << std::endl;
+		Logger::instance().log_error(" build_get_response  retrv from memDB failed for str:" ,str);
 		std::optional<std::string> errstr=build_err_response("GET failed.could not find key");
 		return errstr;
 	}
 	if (std::holds_alternative<std::string>(*val)) {
-		std::cout << "INFO: build_get_response from str:" << str << " rtrv string:" << std::get<std::string>(*val) << std::endl;
+		Logger::instance().log_info(" build_get_response from str:" ,str ," rtrv string:" ,std::get<std::string>(*val));
 		std::optional<std::string> getrspns=Resp::serialize(Resp::SIMPLE_STR,std::get<std::string>(*val));
 		if (!getrspns) {
-			std::cout << "ERR: build_get_response serialize simple_str response" << std::endl;
+			Logger::instance().log_error(" build_get_response serialize simple_str response");
 			return std::nullopt;
 		}
 		return (*getrspns);
 	}
 	if (std::holds_alternative<std::list<std::string>>(*val)) {
-		std::cout << "INFO: build_get_response . from str:" << str << "retrv list" << std::endl;
+		Logger::instance().log_info(" build_get_response . from str:" ,str ,"retrv list");
 		std::optional<std::string> srlzd=Resp::serialize(Resp::ARR,std::get<std::list<std::string>>(*val));
 		if (!srlzd) {
-			std::cout << "ERR: build_get_response serialize arr response" << std::endl;
+			Logger::instance().log_error(" build_get_response serialize arr response" ); 
 			return std::nullopt;
 		}
 		return *srlzd;

@@ -9,9 +9,11 @@
 #include <thread>
 #include <optional>
 #include <memory>
+#include <sstream>
 
 #include "srvr.h"
 #include "commands_srvr.h"
+#include "logger.h"
 
 
 std::unique_ptr<SrvrCmdMgr>	Srvr::m_CMD_MGR{new SrvrCmdMgr{}};
@@ -22,6 +24,7 @@ std::unique_ptr<SrvrCmdMgr>	Srvr::m_CMD_MGR{new SrvrCmdMgr{}};
 
 bool Srvr::activate()
 {
+	Logger::instance().start("rediscc_srvr");
 	bool rc{};
 	m_listenFd = open_socket();
 	rc = assign_protocol_address();
@@ -53,11 +56,11 @@ bool RedisSrvr::acceptor()
 
 		int nready = select(maxfd+1,&read_fdset,NULL,NULL,NULL);
 		if (nready ==-1) {
-			std::cout << "ERR: select ready sockets number is: "<<nready<<std::endl;
+			Logger::instance().log_error(" select ready sockets number is: ", std::to_string(nready));
 			continue;	
 		}
 		if (nready > 0) {
-			std::cout << "INFO: select ready sockets number is: "<<nready<<std::endl;
+			Logger::instance().log_info(" select ready sockets number is: ", std::to_string(nready));
 		}
 
 		if (FD_ISSET(m_listenFd, &read_fdset)) {
@@ -98,7 +101,9 @@ bool RedisSrvr::recv_and_respond(int connfd,SrvrCmdMgr& cmdMgr)
 	int BUFF_SZ {4096};
 	int cycles{};
 
-	std::cout << "INFO: recv_and_respond threadid:" << std::this_thread::get_id() << " connfd:" << connfd << std::endl;
+	std::stringstream ss;
+	ss << std::this_thread::get_id();
+	Logger::instance().log_info(" recv_and_respond threadid:", ss.str()," connfd:", std::to_string(connfd));
 
 	while (true) {
 
@@ -125,12 +130,9 @@ bool RedisSrvr::recv_and_respond(int connfd,SrvrCmdMgr& cmdMgr)
 									,(*rspns).length()
 									,flags);
 				if (ret_snd != static_cast<ssize_t>((*rspns).length())){
-					std::cout << "ERR: msg was not sent completly msg is:" << *rspns << std::endl;
+					Logger::instance().log_error(" msg was not sent completly msg is:", *rspns);
 					if (ret_snd == -1) {
-						std::cout << " ERR: errno of send:" << errno << std::endl;
-				}
-				else {
-					//std::cout << "INFO: msg sent is:" << *rspns << std::endl;
+						Logger::instance().log_error(" errno of send:", std::to_string(errno));
 				}
 			}
 		}
@@ -160,11 +162,11 @@ void RedisSrvr::conn_mgr(int connfd,SrvrCmdMgr& cmdMgr)
 
 		numready = select(maxfd+1,&rd_fdset,&wrt_fdset,&err_fdset,NULL);
 		if (numready == -1) {
-			std::cout << "ERR: conn_mgr select ready sockets number is: "<<numready<<std::endl;
+			Logger::instance().log_error(" conn_mgr select ready sockets number is: ", std::to_string(numready));
 			continue;
 		}
 		if (numready > 0) {
-			std::cout << "INFO: conn_mgr select ready sockets number is: "<<numready<<std::endl;
+			Logger::instance().log_info(" conn_mgr select ready sockets number is: ", std::to_string(numready));
 		}
 
 		if (FD_ISSET(connfd, &rd_fdset)) {
@@ -179,7 +181,7 @@ void RedisSrvr::conn_mgr(int connfd,SrvrCmdMgr& cmdMgr)
 	}
 
 	close_socket(connfd);
-	std::cout << "INFO: close socket in thread. connfd:" << connfd << std::endl;
+	Logger::instance().log_info(" close socket in thread. connfd:", std::to_string(connfd));
 }
 
 bool RedisSrvr::insert2memdb(std::string key,std::string val)
@@ -201,7 +203,7 @@ int TcpSrvr::open_socket()
 {
 	int listenfd=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
 	if (listenfd == -1) {
-		std::cout << "ERR: could not open socket" << std::endl; 
+		Logger::instance().log_error(" could not open socket");
 	}
 
 /*	int opt=1;
@@ -219,7 +221,7 @@ bool TcpSrvr::make_socket_passive_listen()
 {
 	errno=0;
 	if (listen(m_listenFd,m_backlog)) {
-		std::cout << "ERR: listen failed on " << m_listenFd << " errno is:" << errno << "backlog is:" << m_backlog << std::endl;
+		Logger::instance().log_error(" listen failed on ", std::to_string(m_listenFd)," errno is:", std::to_string(errno));
 		close_socket(m_listenFd);
 		return false;
 	}
