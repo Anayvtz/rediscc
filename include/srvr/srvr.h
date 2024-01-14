@@ -12,6 +12,7 @@
 
 #include "memdb.h"
 #include "rediscc.h"
+#include "logger.h"
 
 class SrvrCmdMgr;
 
@@ -20,7 +21,7 @@ class Srvr
 public:
 
 	explicit Srvr(int backlog) : m_listenFd{},m_backlog{backlog} {}
-	virtual ~Srvr() {}
+	virtual ~Srvr() { Logger::instance().stop();}
 
 	bool activate();
 
