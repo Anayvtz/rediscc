@@ -6,6 +6,7 @@
 
 #include "commands.h"
 #include "resp.h"
+#include "logger.h"
 
 
 std::vector<std::string> CmdMgr::m_CMD_TYP { std::string("PING")

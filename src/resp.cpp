@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "resp.h"
+#include "logger.h"
 
 
 /*
@@ -206,7 +207,7 @@ bool Deserialize::simple_str(std::string str)
 		return false;
 	std::string::size_type delimpos=str.find_first_of(Resp::DELIM);
 	m_dsrlzed = str.substr(1,delimpos-1);
-	std::cout << "INFO: Deserialize::simple_str " << std::get<std::string>(m_dsrlzed) << std::endl;
+	Logger::instance().log_info(" Deserialize::simple_str " ,std::get<std::string>(m_dsrlzed));
     return true;
 }
 
@@ -267,15 +268,11 @@ std::optional<std::list<std::string>> Deserialize::array(std::string str)
 		return std::nullopt;
 	std::string::size_type delimpos=str.find(Resp::DELIM);
 	if (delimpos > str.length()) {
-		std::cout << "ERR: Deserialize::array. str:" << str << "delimpos:" << delimpos << std::endl;
+		Logger::instance().log_error(" Deserialize::array. str:" ,str ,"delimpos:" ,std::to_string(delimpos));
 		return std::nullopt;
 	}
-//	std::cout << "INFO: Deserialize::array. str:" << str << "delimpos:" << delimpos << std::endl;
 	std::string arrsz = str.substr(1,delimpos-1);
 	int iarrsz = std::stoi(arrsz);
-/*	if (iarrsz == 1) {
-		return bulk_str(&str[delimpos+Resp::DELIM.length()]);
-	}*/
 	std::list<std::string> arrlst{};
 	int pos=delimpos+Resp::DELIM.length();
 	for (int i=0; i<iarrsz ; ++i) {
