@@ -47,6 +47,7 @@ public:
 	bool activate_and_process_ping();
 	bool activate_and_process_set(std::string key,std::string value);
 	bool activate_and_process_get(std::string key);
+	bool activate_and_process_cmd(std::string srlzd);
 
 protected:
 
