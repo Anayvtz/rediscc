@@ -12,6 +12,7 @@
 #include "clnt.h"
 #include "resp.h"
 #include "commands_clnt.h"
+#include "logger.h"
 
 ClntCmdMgr RedisClnt::m_CMD_MGR;
 
@@ -45,7 +46,7 @@ bool RedisClnt::connect_to_server()
 						,reinterpret_cast<struct sockaddr*>(&srvraddr)
 						,sizeof(srvraddr));
 	if (conn_rc==-1) {
-		std::cout<<"ERR: connect fail on connfd:" << m_connFd << " with errno:" << errno << std::endl;
+		Logger::instance().log_error(" connect fail on connfd:" ,std::to_string(m_connFd) ," with errno:" ,std::to_string(errno)); 
 		close(m_connFd);
 		return false;
 	}
@@ -63,7 +64,7 @@ bool RedisClnt::activate_and_process_ping()
                      ,(*pingreq).length()
                      ,flags);
 	if (ret_snd != static_cast<int>((*pingreq).length())) {
-		std::cout << "ERR: not send all buff:" << (*pingreq) << std::endl;
+		Logger::instance().log_error(" not send all buff:" ,(*pingreq));
 	}
 
     int BUFF_SZ {4096};
@@ -88,7 +89,7 @@ bool RedisClnt::activate_and_process_set(std::string key,std::string value)
                      ,(*setreq).length()
                      ,flags);
 	if (ret_snd != static_cast<int>((*setreq).length())) {
-		std::cout << "ERR: not send all buff:" << (*setreq) << std::endl;
+		Logger::instance().log_error(" not send all buff:",(*setreq));
 	}
 
     int BUFF_SZ {4096};
@@ -110,7 +111,7 @@ bool RedisClnt::activate_and_process_get(std::string key)
                      ,(*setreq).length()
                      ,flags);
 	if (ret_snd != static_cast<int>((*setreq).length())) {
-		std::cout << "ERR: not send all buff:" << (*setreq) << std::endl;
+		Logger::instance().log_error(" not send all buff:" ,(*setreq)); 
 	}
 
     int BUFF_SZ {4096};

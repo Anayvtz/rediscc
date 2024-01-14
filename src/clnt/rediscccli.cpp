@@ -1,8 +1,10 @@
 
 #include "clnt.h"
+#include "logger.h"
 
 int main()
 {
+	Logger::instance().start("rediscc_clnt");
 	RedisClnt clnt;
 	clnt.activate();
 	clnt.activate_and_process_ping();

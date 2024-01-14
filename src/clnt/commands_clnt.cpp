@@ -6,7 +6,7 @@
 
 #include "commands_clnt.h"
 #include "resp.h"
-//#include "clnt.h"
+#include "logger.h"
 
 
 /*
@@ -51,7 +51,7 @@ std::optional<std::string> ClntCmdMgr::process_response(char* str,int sz)
 {
 	std::optional<Deserialize::DsrlzdVariant_t> rspns=Resp::deserialize(std::string(str,sz));
 	if (!rspns) {
-		std::cout << "ERR: deserialize fail for str:" << str << std::endl;
+		Logger::instance().log_error(" deserialize fail for str:" ,str); 
 	}
 	std::string rspnsstr{std::get<std::string>(*rspns)};
 	return rspnsstr;
