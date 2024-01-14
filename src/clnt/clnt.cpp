@@ -54,6 +54,27 @@ bool RedisClnt::connect_to_server()
 	return true;
 }
 
+bool RedisClnt::activate_and_process_cmd(std::string srlzd)
+{
+	int flags{};
+	errno = 0;
+    int ret_snd=send(m_connFd
+                     ,srlzd.c_str()
+                     ,srlzd.length()
+                     ,flags);
+	if (ret_snd != static_cast<int>(srlzd.length())) {
+		Logger::instance().log_error(" not send all buff:" ,srlzd);
+	}
+
+    int BUFF_SZ {4096};
+	char buf[BUFF_SZ];
+    int ret_data = recv(m_connFd,buf,BUFF_SZ,flags);
+	if (ret_data <= 0) return false;
+	std::optional<std::string> rspns=m_CMD_MGR.process_response(buf,BUFF_SZ);
+	if (!rspns) return false;
+	std::cout << *rspns << std::endl;
+	return true;
+}
 bool RedisClnt::activate_and_process_ping()
 {
 	std::optional<std::string> pingreq=m_CMD_MGR.build_ping_request();
