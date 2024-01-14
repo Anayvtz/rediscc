@@ -18,6 +18,8 @@ public:
 
 	enum CmdType : int { PING=0, HELLO, ECHO, SET, GET, SETEX, NOT_SUPPORTED};
 
+	virtual ~CmdMgr() {}
+
 	std::optional<std::string> process_and_respond(char* buf,int sz,RedisSrvr&);
 
 	CmdType find_cmd(char* str,int sz);
